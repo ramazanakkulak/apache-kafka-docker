@@ -1,0 +1,159 @@
+version: "3.8"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.1
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+    hostname: zookeeper
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    labels:
+      maintainer: user
+      description: It provides coordination and synchronization services for distributed systems.
+      project: zookeeper
+      version: v7.4.1
+      type: zookeeper
+    networks:
+      - kafka
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc 127.0.0.1 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  
+  broker:
+    image: confluentinc/cp-server:7.4.1
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "2"
+          memory: 1G
+    hostname: broker
+    container_name: broker
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    networks:
+      - kafka
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: broker:29092
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+      CONFLUENT_METRICS_ENABLE: 'true'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+    labels:
+      maintainer: user
+      description: Apache Kafka is a distributed data streaming platform that provides high-performance, scalable, and real-time data streaming.
+      project: broker
+      version: v7.4.1
+      type: broker
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server broker:29092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.4.1
+    hostname: schema-registry
+    container_name: schema-registry
+    networks:
+      - kafka
+    restart: always
+    depends_on:
+      - broker
+      - zookeeper
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'broker:29092'
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    labels:
+      maintainer: user
+      description: Schema Registry is a component in the Apache Kafka ecosystem that handles schemas for data in Kafka topics, ensuring compatibility and evolution of data between producers and consumers.
+      project: schema-registry
+      version: v7.4.1
+      type: schema-registry
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://schema-registry:8081/subjects"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "1"
+          memory: 512M
+
+  kafka-manager:
+    image: hlebalbau/kafka-manager:stable
+    ports:
+      - "9000:9000"
+    depends_on:
+    - zookeeper
+    - broker
+    links:
+      - zookeeper
+      - broker
+    environment:
+      ZK_HOSTS: zookeeper:2181
+      APPLICATION_SECRET: letmein
+      KM_ARGS: -Djava.net.preferIPv4Stack=true
+    labels:
+      maintainer: user
+      description: ui-client
+      project: kafka-manager
+      version: v7.4.1
+      type: kafka-manager
+    networks:
+      - kafka
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://kafka-manager:9000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "1"
+          memory: 512M
+
+networks:
+  kafka:
+    driver: bridge
