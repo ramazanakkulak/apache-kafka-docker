@@ -11,4 +11,15 @@ This README file explains step by step how to start Apache Kafka using Docker.
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/ramazanakkulak/apache-kafka-docker
+   git clone https://github.com/ramazanakkulak/apache-kafka-docker```
+
+2. Run docker-compose:
+   ##### For the case without source control
+   ```bash
+   docker-compose docker-compose-resource-control.yml up
+   ```
+
+   ##### For the case with source control
+   ```bash
+   docker-compose up
+   ```
