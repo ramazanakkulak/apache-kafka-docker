@@ -20,7 +20,7 @@ This README file explains step by step how to start Apache Kafka using Docker.
 ### **2. Run docker-compose:**
    - For the case with source control
    ```bash
-   docker-compose docker-compose-resource-control.yml up
+   docker-compose -f docker-compose-resource-control.yml up
    ```
 
    - For the case without source control
